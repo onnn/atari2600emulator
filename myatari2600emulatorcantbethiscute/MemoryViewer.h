@@ -1,10 +1,11 @@
 #pragma once
 
-class UI {
 
-	public:
-	UI();
-	~UI();
+class MemoryViewer {
+
+public:
+	MemoryViewer();
+	~MemoryViewer();
 
 	//register window class and call methods for
 	//instantiating drawing resources
@@ -15,25 +16,21 @@ class UI {
 
 private:
 
-	static HWND m_hwnd;
+	HWND m_hwnd;
 	static HWND m_handleForMemoryViewerWindow;
 	ID2D1Factory* m_pDirect2dFactory;
 	ID2D1HwndRenderTarget* m_pRenderTarget;
-	ID2D1HwndRenderTarget* m_pMemoryViewerRenderTarget;
 	ID2D1SolidColorBrush* m_pLightSlateGrayBrush;
 	ID2D1SolidColorBrush* m_pCornflowerBlueBrush;
 	ID2D1SolidColorBrush* m_pBlackBrush;
 	IDWriteFactory* pDWriteFactory_;
 	IDWriteTextFormat* pTextFormat_;
 	static WNDCLASSEX videoWindowClass;
-	static WNDCLASSEX memoryViewerWindowClass;
 
-	const wchar_t* wszText_;
+	static const wchar_t* wszText_;
 	UINT32 cTextLength_;
 	bool videoWindowOpen;
-	bool memoryViewerWindowOpen;
 	bool videoWindowWindowClassCreated;
-	bool memoryViewerWindowClassCreated;
 
 	HRESULT CreateDeviceIndependentResources();
 
@@ -52,8 +49,11 @@ private:
 		HWND hWnd, UINT message, WPARAM wParam,
 		LPARAM lParam);
 
-	
-	static void AddMenus(HWND hwnd);
+
+	void AddMenus(HWND hwnd);
+	HRESULT OnClick();
+	void DisableMenu(HWND hwnd);
 
 
 };
+

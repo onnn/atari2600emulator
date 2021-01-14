@@ -143,12 +143,14 @@
   <ItemGroup>
     <ClInclude Include="CPU.h" />
     <ClInclude Include="MEM.h" />
+    <ClInclude Include="MemoryViewer.h" />
     <ClInclude Include="UI.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CPU.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MEM.cpp" />
+    <ClCompile Include="MemoryViewer.cpp" />
     <ClCompile Include="PIA.cpp" />
     <ClCompile Include="UI.cpp" />
   </ItemGroup>

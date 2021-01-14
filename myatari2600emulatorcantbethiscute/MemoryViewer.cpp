@@ -12,7 +12,6 @@
 #include <d2d1helper.h>
 #include <dwrite.h>
 #include <wincodec.h>
-#include "UI.h"
 #include "MemoryViewer.h"
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "Dwrite")
@@ -20,16 +19,17 @@
 
 template<class Interface>
 inline void SafeRelease(
-	Interface** ppInterfaceToRelease
+    Interface** ppInterfaceToRelease
 )
 {
-	if (*ppInterfaceToRelease != NULL)
-	{
-		(*ppInterfaceToRelease)->Release();
-		(*ppInterfaceToRelease) = NULL;
-	}
+    if (*ppInterfaceToRelease != NULL)
+    {
+        (*ppInterfaceToRelease)->Release();
+        (*ppInterfaceToRelease) = NULL;
+    }
 }
 
+const wchar_t* MemoryViewer::wszText_;
 
 #ifndef Assert
 #if defined( DEBUG ) || defined( _DEBUG )
@@ -53,51 +53,51 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define IDM_FILE_QUIT 3
 #define IDM_TOOLS_MEMORY_VIEWER 4
 
-HWND UI::m_hwnd;
-WNDCLASSEX UI::videoWindowClass;
+WNDCLASSEX MemoryViewer::videoWindowClass;
 
+class MemoryViewer;
 class UI;
-
-UI::UI() :
+MemoryViewer::MemoryViewer() :
     //m_hwnd(NULL),
     m_pDirect2dFactory(NULL),
     m_pRenderTarget(NULL),
     m_pLightSlateGrayBrush(NULL),
-    m_pCornflowerBlueBrush(NULL)
+    m_pCornflowerBlueBrush(NULL),
+    videoWindowOpen(false),
+    videoWindowWindowClassCreated(false)
 {
 }
 
-UI::~UI() {
+MemoryViewer::~MemoryViewer() {
 
-	SafeRelease(&m_pDirect2dFactory);
-	SafeRelease(&m_pRenderTarget);
-	SafeRelease(&m_pLightSlateGrayBrush);
-	SafeRelease(&m_pCornflowerBlueBrush);
+    SafeRelease(&m_pDirect2dFactory);
+    SafeRelease(&m_pRenderTarget);
+    SafeRelease(&m_pLightSlateGrayBrush);
+    SafeRelease(&m_pCornflowerBlueBrush);
 }
 
 
-void UI::Run() {
+void MemoryViewer::Run() {
 
     MSG msg = { 0 };
 
     //loop until WM_QUIT
     //GetMessage puts application to sleep until message
-    while (msg.message != WM_QUIT) {
 
-        while (GetMessage(&msg, NULL, 0, 0)) 
-           {
+        while (GetMessage(&msg, NULL, 0, 0))
+        {
 
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-    }
 
-   
+
+
 }
 
 
-HRESULT UI::InitWindowsApp()
+HRESULT MemoryViewer::InitWindowsApp()
 {
     HRESULT hr;
 
@@ -112,14 +112,14 @@ HRESULT UI::InitWindowsApp()
         ReleaseDC(0, screen);
 
         videoWindowClass.style = CS_HREDRAW | CS_VREDRAW;
-        videoWindowClass.lpfnWndProc = UI::WndProc;
+        videoWindowClass.lpfnWndProc = WndProc;
         videoWindowClass.hInstance = HINST_THISCOMPONENT;
         videoWindowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         videoWindowClass.hCursor = LoadCursor(NULL, IDI_APPLICATION);
         videoWindowClass.hbrBackground = GetSysColorBrush(COLOR_3DFACE);
         videoWindowClass.lpszClassName = L"Simple menu";
 
-       
+
         //register this wndclass instance with windows
         //so that a window can be created
 
@@ -134,31 +134,34 @@ HRESULT UI::InitWindowsApp()
         //many WIN32 API functions dealing with windows
         //require an HWND to know what window to act on.
 
-        m_hwnd = CreateWindow(videoWindowClass.lpszClassName,
+        this->m_hwnd = CreateWindowEx(NULL, videoWindowClass.lpszClassName,
             L"Simple menu",
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-            100,
-            100,
-            350,
-            250,
+            WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CHILD,
             0,
+            0,
+            1280 * dpiScaleX_,
+            720 * dpiScaleY_,
+            UI::m_hwnd,
             0,
             HINST_THISCOMPONENT,
             this
         );
 
-        hr = m_hwnd ? S_OK : E_FAIL;
+
+
+        hr = this->m_hwnd ? S_OK : E_FAIL;
         if (SUCCEEDED(hr)) {
 
             ShowWindow(m_hwnd, SW_SHOWNORMAL);
             UpdateWindow(m_hwnd);
         }
-  
-          }
+
+    }
+
     return hr;
 }
 
-HRESULT UI::CreateDeviceIndependentResources()
+HRESULT MemoryViewer::CreateDeviceIndependentResources()
 {
     HRESULT hr = S_OK;
 
@@ -173,14 +176,14 @@ HRESULT UI::CreateDeviceIndependentResources()
             __uuidof(IDWriteFactory),
             reinterpret_cast<IUnknown**>(&pDWriteFactory_)
         );
-        wszText_ = L"Hello World using DirectWrite!";
+        wszText_ = L"MemoryViewer";
         cTextLength_ = (UINT32)wcslen(wszText_);
     }
 
     if (SUCCEEDED(hr))
     {
         hr = pDWriteFactory_->CreateTextFormat(
-            L"Gabriola",
+            L"Papyrus",
             NULL,
             DWRITE_FONT_WEIGHT_REGULAR,
             DWRITE_FONT_STYLE_NORMAL,
@@ -197,13 +200,14 @@ HRESULT UI::CreateDeviceIndependentResources()
 
     if (SUCCEEDED(hr))
     {
-        hr = pTextFormat_->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        hr = pTextFormat_->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+        pTextFormat_->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
     }
 
     return hr;
 }
 
-HRESULT UI::CreateDeviceResources()
+HRESULT MemoryViewer::CreateDeviceResources()
 {
 
     HRESULT hr = S_OK;
@@ -221,7 +225,7 @@ HRESULT UI::CreateDeviceResources()
 
         hr = m_pDirect2dFactory->CreateHwndRenderTarget(
             D2D1::RenderTargetProperties(),
-            D2D1::HwndRenderTargetProperties(m_hwnd, size),
+            D2D1::HwndRenderTargetProperties(this->m_hwnd, size),
             &m_pRenderTarget
         );
 
@@ -251,51 +255,49 @@ HRESULT UI::CreateDeviceResources()
         }
     }
 
-    return hr;
-
-  }
 
 
-void UI::DiscardDeviceResources()
+        return hr;
+}
+
+
+void MemoryViewer::DiscardDeviceResources()
 {
     SafeRelease(&m_pRenderTarget);
-    SafeRelease(&m_pMemoryViewerRenderTarget);
     SafeRelease(&m_pLightSlateGrayBrush);
     SafeRelease(&m_pCornflowerBlueBrush);
     SafeRelease(&m_pBlackBrush);
 }
 
-LRESULT CALLBACK UI::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK MemoryViewer::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     LRESULT result = 0;
-    MemoryViewer memoryViewer;
 
-    
     if (message == WM_CREATE)
     {
         LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
-        UI* pUI = (UI*)pcs->lpCreateParams;
+        MemoryViewer* pMemoryViewer = (MemoryViewer*)pcs->lpCreateParams;
 
         ::SetWindowLongPtrW(
             hwnd,
             GWLP_USERDATA,
-            reinterpret_cast<LONG_PTR>(pUI)
+            reinterpret_cast<LONG_PTR>(pMemoryViewer)
         );
 
         result = 1;
-                        AddMenus(hwnd);
+        pMemoryViewer->AddMenus(hwnd);
+        pMemoryViewer->DisableMenu(hwnd);
     }
     else
     {
-        UI* pUI = reinterpret_cast<UI*>(static_cast<LONG_PTR>(
+        MemoryViewer* pMemoryViewer = reinterpret_cast<MemoryViewer*>(static_cast<LONG_PTR>(
             ::GetWindowLongPtrW(
-                m_hwnd,
+                hwnd,
                 GWLP_USERDATA
             )));
- 
+
         bool wasHandled = false;
 
-        if (pUI)
         {
 
             switch (message)
@@ -313,13 +315,12 @@ LRESULT CALLBACK UI::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
                     break;
 
                 case IDM_TOOLS_MEMORY_VIEWER:
-                    
-                    memoryViewer.InitWindowsApp();
+
                     break;
 
                 case IDM_FILE_QUIT:
 
-                    SendMessage(m_hwnd, WM_CLOSE, 0, 0);
+                    SendMessage(hwnd, WM_CLOSE, 0, 0);
                     break;
                 }
 
@@ -328,7 +329,7 @@ LRESULT CALLBACK UI::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
             {
                 UINT width = LOWORD(lParam);
                 UINT height = HIWORD(lParam);
-                pUI->OnResize(width, height);
+                pMemoryViewer->OnResize(width, height);
             }
 
             result = 0;
@@ -345,16 +346,23 @@ LRESULT CALLBACK UI::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
             case WM_PAINT:
             {
-                pUI->RenderVideoWindow();
+                pMemoryViewer->RenderVideoWindow();
+
                 ValidateRect(hwnd, NULL);
             }
             result = 0;
             wasHandled = true;
             break;
 
+            case WM_LBUTTONDOWN:
+            {
+                pMemoryViewer->OnClick();
+                MessageBeep(MB_ICONINFORMATION);
+
+                break;
+            }
             case WM_DESTROY:
             {
-                PostQuitMessage(0);
             }
             result = 1;
             wasHandled = true;
@@ -374,78 +382,9 @@ LRESULT CALLBACK UI::WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     return result;
 }
 
-HRESULT UI::RenderVideoWindow()
+void MemoryViewer::OnResize(UINT width, UINT height)
 {
-
-    HRESULT hr = S_OK;
-
-    hr = CreateDeviceResources();
-
-    if (SUCCEEDED(hr))
-    {
-
-        m_pRenderTarget->BeginDraw();
-        m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
-        m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
-
-    D2D1_SIZE_F rtSize = m_pRenderTarget->GetSize();
-
-    int width = static_cast<int>(rtSize.width);
-    int height = static_cast<int>(rtSize.height);
-
-    for (int x = 0; x < width; x += 10)
-    {
-        m_pRenderTarget->DrawLine(D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
-            D2D1::Point2F(static_cast<FLOAT>(x), rtSize.height),
-            m_pLightSlateGrayBrush,
-            0.5f
-        );
-    }
-
-    for (int y = 0; y < height; y += 10)
-    {
-        m_pRenderTarget->DrawLine(
-            D2D1::Point2F(0.0f, static_cast<FLOAT>(y)),
-            D2D1::Point2F(rtSize.width, static_cast<FLOAT>(y)),
-            m_pLightSlateGrayBrush,
-            0.5f
-        );
-    }
-
-    D2D1_RECT_F rectangle1 = D2D1::RectF(
-        0,
-        0,
-        rtSize.width,
-        rtSize.height
-    );
-
-       // Draw a filled rectangle.
-    m_pRenderTarget->FillRectangle(&rectangle1, m_pLightSlateGrayBrush);
-    // Draw the outline of a rectangle.
-    //m_pRenderTarget->DrawRectangle(&rectangle2, m_pCornflowerBlueBrush);
-
-    m_pRenderTarget->DrawTextW(wszText_,
-        cTextLength_,
-        pTextFormat_,
-        rectangle1,
-        m_pBlackBrush);
-
-    hr = m_pRenderTarget->EndDraw();
-    }
-
-    if (hr == D2DERR_RECREATE_TARGET)
-    {
-        hr = S_OK;
-        DiscardDeviceResources();
-    }
-
-    return hr;
-}
-
-
-void UI::OnResize(UINT width, UINT height)
-{
-    if (m_pRenderTarget || m_pMemoryViewerRenderTarget)
+    if (m_pRenderTarget)
     {
         // Note: This method can fail, but it's okay to ignore the
         // error here, because the error will be returned again
@@ -455,7 +394,7 @@ void UI::OnResize(UINT width, UINT height)
 
 }
 
-void UI::AddMenus(HWND hwnd) {
+void MemoryViewer::AddMenus(HWND hwnd) {
 
     HMENU hMenubar;
     HMENU hFileMenu;
@@ -472,6 +411,88 @@ void UI::AddMenus(HWND hwnd) {
 
     AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR)hFileMenu, L"&File");
     AppendMenuW(hMenubar, MF_POPUP, (UINT_PTR)hToolsMenu, L"&Tools");
-    SetMenu(hwnd, hMenubar);
+
+}
+
+
+HRESULT MemoryViewer::RenderVideoWindow()
+{
+
+    HRESULT hr = S_OK;
+
+    hr = CreateDeviceResources();
+
+    if (SUCCEEDED(hr))
+    {
+
+        m_pRenderTarget->BeginDraw();
+        m_pRenderTarget->SetTransform(D2D1::Matrix3x2F::Identity());
+        m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::White));
+
+        D2D1_SIZE_F rtSize = m_pRenderTarget->GetSize();
+
+        int width = static_cast<int>(rtSize.width);
+        int height = static_cast<int>(rtSize.height);
+
+        for (int x = 0; x < width; x += 10)
+        {
+            m_pRenderTarget->DrawLine(D2D1::Point2F(static_cast<FLOAT>(x), 0.0f),
+                D2D1::Point2F(static_cast<FLOAT>(x), rtSize.height),
+                m_pLightSlateGrayBrush,
+                0.5f
+            );
+        }
+
+        for (int y = 0; y < height; y += 10)
+        {
+            m_pRenderTarget->DrawLine(
+                D2D1::Point2F(0.0f, static_cast<FLOAT>(y)),
+                D2D1::Point2F(rtSize.width, static_cast<FLOAT>(y)),
+                m_pLightSlateGrayBrush,
+                0.5f
+            );
+        }
+
+        D2D1_RECT_F rectangle1 = D2D1::RectF(
+            0,
+            0,
+            rtSize.width,
+            rtSize.height
+        );
+
+        // Draw a filled rectangle.
+        m_pRenderTarget->FillRectangle(&rectangle1, m_pLightSlateGrayBrush);
+        // Draw the outline of a rectangle.
+        //m_pRenderTarget->DrawRectangle(&rectangle2, m_pCornflowerBlueBrush);
+
+        m_pRenderTarget->DrawTextW(wszText_,
+            cTextLength_,
+            pTextFormat_,
+            rectangle1,
+            m_pBlackBrush);
+
+        hr = m_pRenderTarget->EndDraw();
+    }
+
+    if (hr == D2DERR_RECREATE_TARGET)
+    {
+        hr = S_OK;
+        DiscardDeviceResources();
+    }
+
+    return hr;
+}
+
+HRESULT MemoryViewer::OnClick()
+{
+    
+   HRESULT hr = S_OK;
+    wszText_ = L"hi";
+    return hr;
+}
+
+void MemoryViewer::DisableMenu(HWND hwnd)
+{
+    SetMenu(hwnd, NULL);
 
 }

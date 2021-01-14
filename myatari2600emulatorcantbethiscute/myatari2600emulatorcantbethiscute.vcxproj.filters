@@ -24,6 +24,9 @@
     <ClInclude Include="UI.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="MemoryViewer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MEM.cpp">
@@ -39,6 +42,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PIA.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryViewer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
