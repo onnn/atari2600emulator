@@ -106,7 +106,6 @@ void CPU::Step() {
 	(*p[instruction])();
 
 	if (step >= 900) {
-		system("pause");
 	}
 	std::cout << std::endl;
 	++step;
