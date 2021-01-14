@@ -2,8 +2,7 @@
 
 class UI {
 
-
-public:
+	public:
 	UI();
 	~UI();
 
@@ -15,7 +14,26 @@ public:
 	void Run();
 
 private:
-	
+
+	static HWND m_hwnd;
+	static HWND m_handleForMemoryViewerWindow;
+	ID2D1Factory* m_pDirect2dFactory;
+	ID2D1HwndRenderTarget* m_pRenderTarget;
+	ID2D1SolidColorBrush* m_pLightSlateGrayBrush;
+	ID2D1SolidColorBrush* m_pCornflowerBlueBrush;
+	ID2D1SolidColorBrush* m_pBlackBrush;
+	IDWriteFactory* pDWriteFactory_;
+	IDWriteTextFormat* pTextFormat_;
+	static WNDCLASSEX videoWindowClass;
+	static WNDCLASSEX memoryViewerWindowClass;
+
+	const wchar_t* wszText_;
+	UINT32 cTextLength_;
+	bool videoWindowOpen;
+	bool memoryViewerWindowOpen;
+	bool videoWindowWindowClassCreated;
+	bool memoryViewerWindowClassCreated;
+
 	HRESULT CreateDeviceIndependentResources();
 
 	//initialize device depedent resources
@@ -32,10 +50,11 @@ private:
 	static LRESULT CALLBACK WndProc(
 		HWND hWnd, UINT message, WPARAM wParam,
 		LPARAM lParam);
+	static LRESULT CALLBACK WndProcForMemoryViewer(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
-	HWND m_hwnd;
-	ID2D1Factory* m_pDirect2dFactory;
-	ID2D1HwndRenderTarget* m_pRenderTarget;
-	ID2D1SolidColorBrush* m_pLightSlateGrayBrush;
-	ID2D1SolidColorBrush* m_pCornflowerBlueBrush;
+	
+	static void AddMenus(HWND hwnd);
+	static void createMemoryViewerWindow(WNDCLASSEX& wc, HWND& hwnd, HINSTANCE hInst, int nShowCmd);
+
+
 };
